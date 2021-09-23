@@ -127,5 +127,5 @@ async def play(ctx, limit=5):
         await message.add_reaction(num_emojis[i+1])
     await message.add_reaction(arrows_emojis[1])
 
-auth_token = os.environ.get('zBOT_TOKEN')
+auth_token = os.environ.get('BOT_TOKEN')
 bot.run(auth_token)
