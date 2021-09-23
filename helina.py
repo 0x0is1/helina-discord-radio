@@ -11,7 +11,7 @@ num_emojis = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
 
 idscontainer, datacontainer = {}, {}
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn'}
-bot = commands.Bot(command_prefix="..")
+bot = commands.Bot(command_prefix="rj ")
 bot.remove_command('help')
 
 @bot.event
@@ -82,7 +82,6 @@ async def on_reaction_add(reaction, user):
         if not vc.is_playing():
             URL = lbh.getListenUrl(stationid)
             vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
-
 
 @bot.event
 async def on_command_error(ctx, error):
