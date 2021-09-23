@@ -52,9 +52,9 @@ async def on_reaction_add(reaction, user):
             data, ids = lbh.getChannels()
             datacontainer[channel.id] = data
             idscontainer[channel.id] = ids
-            embed = embeds.embedder2(data, limit+indx-1)
+            embed = embeds.embedder2(data, (limit-5)+indx-1)
             await message.edit(embed=embed)
-            stationid = ids[limit+indx-1]
+            stationid = ids[(limit-5)+indx-1]
             await message.add_reaction(arrows_emojis[3])
             await message.add_reaction("🛑")
             await message.add_reaction(arrows_emojis[2])
