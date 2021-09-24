@@ -58,14 +58,14 @@ async def on_reaction_add(reaction, user):
             if rtype == 0:
                 if int(args[2]) == 0:data, ids = lbh.getChannels()
                 else:data, ids = lbh.searchRG(args[3])
-                embed = embeds.embedder2(data, indx-1, rtype, int(args[2]), args[3])
+                embed = embeds.embedder2(data, (limit-5)+indx-1, rtype, int(args[2]), args[3])
             else:
                 data, ids = lbh.getStations(0)
-                embed = embeds.embedder4(data, indx-1, rtype)
+                embed = embeds.embedder4(data, (limit-5)+indx-1, rtype)
             datacontainer[channel.id] = data
             idscontainer[channel.id] = ids
             await message.edit(embed=embed)
-            stationid = ids[indx-1]
+            stationid = ids[(limit-5)+indx-1]
             await message.add_reaction(arrows_emojis[3])
             await message.add_reaction("🛑")
             await message.add_reaction(arrows_emojis[2])
