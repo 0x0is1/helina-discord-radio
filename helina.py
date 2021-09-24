@@ -23,7 +23,8 @@ async def on_reaction_add(reaction, user):
     message = reaction.message
     if not user.bot and message.author == bot.user:
         await message.remove_reaction(str(reaction), user)
-        limit = int(message.embeds[0].footer.text)
+        args = message.embeds[0].footer.text.split("-")
+        limit, rtype = int(args[0]), int(args[1])
         channel = message.channel
         starter_channel = user.voice.channel
         guild = message.guild
@@ -36,10 +37,15 @@ async def on_reaction_add(reaction, user):
             if reaction == arrows_emojis[0]:limit -= 5
             if reaction == arrows_emojis[1]:limit += 5
             if limit < 5:limit = 5
-            data, ids = lbh.getChannels()
+            if rtype == 0:
+                if int(args[2]) == 0:data, ids = lbh.getChannels()
+                else:data, ids = lbh.searchRG(args[3])
+                embed = embeds.embedder(data, limit, rtype, int(args[2]), args[3])
+            else:
+                data, ids = lbh.getStations(0)
+                embed = embeds.embedder3(data, limit, rtype)
             datacontainer[channel.id] = data
             idscontainer[channel.id] = ids
-            embed = embeds.embedder(data, limit)
             await message.edit(embed=embed)
             return
 
@@ -49,10 +55,15 @@ async def on_reaction_add(reaction, user):
                 await message.remove_reaction(num_emojis[i+1], bot.user)
             await message.remove_reaction(arrows_emojis[1], bot.user)
             indx = num_emojis.index(reaction)
-            data, ids = lbh.getChannels()
+            if rtype == 0:
+                if int(args[2]) == 0:data, ids = lbh.getChannels()
+                else:data, ids = lbh.searchRG(args[3])
+                embed = embeds.embedder2(data, indx-1, rtype, int(args[2]), args[3])
+            else:
+                data, ids = lbh.getStations(0)
+                embed = embeds.embedder4(data, indx-1, rtype)
             datacontainer[channel.id] = data
             idscontainer[channel.id] = ids
-            embed = embeds.embedder2(data, indx-1)
             await message.edit(embed=embed)
             stationid = ids[indx-1]
             await message.add_reaction(arrows_emojis[3])
@@ -66,7 +77,8 @@ async def on_reaction_add(reaction, user):
             ids = idscontainer[channel.id]
             data = datacontainer[channel.id]
             stationid = idscontainer[channel.id][stationIndex-1]
-            embed = embeds.embedder2(data, stationIndex-1)
+            if rtype == 0:embed = embeds.embedder2(data, stationIndex-1, rtype, int(args[2]), args[3])
+            else:embed = embeds.embedder4(data, stationIndex-1, rtype)
             await message.edit(embed=embed)
 
         try:
@@ -76,11 +88,14 @@ async def on_reaction_add(reaction, user):
             vc.stop()
 
         if reaction == "🛑" and vc.is_connected():
+            if vc.is_playing(): vc.stop()
             await vc.disconnect()
             return
         
         if not vc.is_playing():
-            URL = lbh.getListenUrl(stationid)
+            if rtype == 0:
+                URL = lbh.getListenUrl(stationid)
+            else: URL = stationid
             vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
 
 @bot.event
@@ -91,7 +106,7 @@ async def on_command_error(ctx, error):
 
 @bot.command(aliases=['hlp', 'h'])
 async def help(ctx):
-    await ctx.send("Prefix = rj help\n**play**: To start the radio")
+    await ctx.send("Prefix = rj help\n**play**: To start the radio\n**Options**:\n  1 for hindi radio\n  2 for US only radio\n**search [search key]**: Search related stations from All over the world")
 
 @bot.command(aliases=['inv', 'invit'])
 async def invite(ctx):
@@ -108,16 +123,33 @@ async def code(ctx):
 
 @bot.command(aliases=['credit', 'cred', 'creds'])
 async def credits(ctx):
-    embed = discord.Embed(title="Helina : Hindi Radio for discord", color=0x03f8fc)
-    embed.add_field(name='API Disclaim: ', value="This API is owned by radio garden. It is an unofficial use of this API which is not public.", inline=False)    
+    embed = discord.Embed(title="Helina", color=0x03f8fc)
+    embed.add_field(name='API Disclaim: ', value="This API is owned by radio garden and live365.", inline=False)    
     embed.add_field(name='Developed by:', value='0x0is1', inline=False)
     await ctx.send(embed=embed)
 
 @bot.command(aliases=['radio', 'rd', 'rdo', 'listen'])
-async def play(ctx, limit=5):
+async def play(ctx, rtype=1):
     channel_id = ctx.message.channel.id
-    data, ids = lbh.getChannels()
-    embed = embeds.embedder(data, limit)
+    if rtype == 1:
+        data, ids = lbh.getChannels()
+        embed = embeds.embedder(data, 5, rtype-1, 0, "None")
+    else:
+        data, ids = lbh.getStations(0)
+        embed = embeds.embedder3(data, 5, rtype-1)
+    datacontainer[channel_id] = data
+    idscontainer[channel_id] = ids
+    message = await ctx.send(embed=embed)
+    await message.add_reaction(arrows_emojis[0])
+    for i in range(len(num_emojis)-1):
+        await message.add_reaction(num_emojis[i+1])
+    await message.add_reaction(arrows_emojis[1])
+
+@bot.command(aliases=['srch', 'find', 'look', 'collect'])
+async def search(ctx, query, rtype=1):
+    channel_id = ctx.message.channel.id
+    data, ids = lbh.searchRG(query)
+    embed = embeds.embedder(data, 5, rtype-1, 1, query)
     datacontainer[channel_id] = data
     idscontainer[channel_id] = ids
     message = await ctx.send(embed=embed)
