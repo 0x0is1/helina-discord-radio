@@ -11,7 +11,7 @@ num_emojis = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
 
 idscontainer, datacontainer = {}, {}
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn'}
-bot = commands.Bot(command_prefix="..")
+bot = commands.Bot(command_prefix="rj ")
 bot.remove_command('help')
 
 @bot.event
@@ -124,13 +124,13 @@ async def on_reaction_add(reaction, user):
             else: URL = stationid
             vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
 
-'''
+
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, CommandNotFound):
-        await ctx.send('`Unknown command` \n Please use right command to operate. `help` for commands details.')
+        await ctx.send('`Unknown command`\nPlease use right command to operate. `help` for commands details.')
     if isinstance(error, CommandInvokeError):return
-'''
+
 
 @bot.command(aliases=['hlp', 'h'])
 async def help(ctx):
@@ -225,5 +225,5 @@ async def favourite(ctx):
         await message.add_reaction(num_emojis[i+1])
     await message.add_reaction(arrows_emojis[1])
 
-auth_token = os.environ.get('EXPERIMENTAL_BOT_TOKEN')
+auth_token = os.environ.get('BOT_TOKEN')
 bot.run(auth_token)
