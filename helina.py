@@ -1,4 +1,4 @@
-import discord, os
+import discord, os, json
 from discord import FFmpegPCMAudio
 from discord.errors import ClientException
 from discord.ext import commands
@@ -11,7 +11,7 @@ num_emojis = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
 
 idscontainer, datacontainer = {}, {}
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn'}
-bot = commands.Bot(command_prefix="rj ")
+bot = commands.Bot(command_prefix="..")
 bot.remove_command('help')
 
 @bot.event
@@ -29,6 +29,8 @@ async def on_reaction_add(reaction, user):
         starter_channel = user.voice.channel
         guild = message.guild
         reaction = str(reaction)
+        global idscontainer, datacontainer
+
         if starter_channel == None:
             await channel.send("Please connect to a voice channel before using command.")
             return
@@ -44,8 +46,8 @@ async def on_reaction_add(reaction, user):
             else:
                 data, ids = lbh.getStations(0)
                 embed = embeds.embedder3(data, limit, rtype)
-            datacontainer[channel.id] = data
-            idscontainer[channel.id] = ids
+            datacontainer[channel.id][message.id] = data
+            idscontainer[channel.id][message.id] = ids
             await message.edit(embed=embed)
             return
 
@@ -59,26 +61,27 @@ async def on_reaction_add(reaction, user):
                 if int(args[2]) == 0:data, ids = lbh.getChannels()
                 else:data, ids = lbh.searchRG(args[3])
                 embed = embeds.embedder2(data, (limit-5)+indx-1, rtype, int(args[2]), args[3])
-            else:
+            if rtype == 1:
                 data, ids = lbh.getStations(0)
                 embed = embeds.embedder4(data, (limit-5)+indx-1, rtype)
-            datacontainer[channel.id] = data
-            idscontainer[channel.id] = ids
+            datacontainer[channel.id][message.id] = data
+            idscontainer[channel.id][message.id] = ids
             await message.edit(embed=embed)
             stationid = ids[(limit-5)+indx-1]
             await message.add_reaction(arrows_emojis[3])
             await message.add_reaction("🛑")
+            if rtype == 0:await message.add_reaction("💖")
             await message.add_reaction(arrows_emojis[2])
-        
+
         if reaction in (arrows_emojis[3], arrows_emojis[2]):
             if reaction == arrows_emojis[3]: stationIndex = limit-1
             if reaction == arrows_emojis[2]: stationIndex = limit+1
             if stationIndex < 1: stationIndex = 1
-            ids = idscontainer[channel.id]
-            data = datacontainer[channel.id]
-            stationid = idscontainer[channel.id][stationIndex-1]
+            ids = idscontainer[channel.id][message.id]
+            data = datacontainer[channel.id][message.id]
+            stationid = ids[stationIndex-1]
             if rtype == 0:embed = embeds.embedder2(data, stationIndex-1, rtype, int(args[2]), args[3])
-            else:embed = embeds.embedder4(data, stationIndex-1, rtype)
+            if rtype == 1:embed = embeds.embedder4(data, stationIndex-1, rtype)
             await message.edit(embed=embed)
 
         try:
@@ -91,18 +94,43 @@ async def on_reaction_add(reaction, user):
             if vc.is_playing(): vc.stop()
             await vc.disconnect()
             return
-        
+
+        if reaction == "💖":
+            try:datacontainer[channel.id]
+            except KeyError:
+                datacontainer[channel.id]= {}
+                idscontainer[channel.id] = {}
+            sid = idscontainer[channel.id][message.id][limit-1]
+            data = list(datacontainer[channel.id][message.id][limit-1])
+            with open("favourite.json", "r") as f:
+                containers = json.load(f)
+            try: containers[str(user.id)][0]
+            except KeyError: containers[str(user.id)] = [[],[]]
+            if sid not in containers[str(user.id)][0]:
+                containers[str(user.id)][0].append(sid)
+                containers[str(user.id)][1].append(data)
+                await channel.send("Added to your liked playlist. Use **fav** to play liked playlist.")
+            else:
+                await channel.send("Removed from your liked playlist. click on heart again to re-add.")
+                containers[str(user.id)][0].remove(sid)
+                containers[str(user.id)][1].remove(data)
+            with open("favourite.json", "w") as f:
+                json.dump(containers, f)
+            return
+
         if not vc.is_playing():
             if rtype == 0:
                 URL = lbh.getListenUrl(stationid)
             else: URL = stationid
             vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
 
+'''
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, CommandNotFound):
         await ctx.send('`Unknown command` \n Please use right command to operate. `help` for commands details.')
     if isinstance(error, CommandInvokeError):return
+'''
 
 @bot.command(aliases=['hlp', 'h'])
 async def help(ctx):
@@ -115,7 +143,7 @@ async def invite(ctx):
 @bot.command(aliases=['jn'])
 async def join(ctx):
     link='https://discord.gg/PyzaTzs2cF'
-    await ctx.send('Join cricbot development server for any help or feedback/bug report.'+link)
+    await ctx.send('Join helina development server for any help or feedback/bug report.'+link)
 
 @bot.command(aliases=['source', 'source-code'])
 async def code(ctx):
@@ -137,11 +165,17 @@ async def play(ctx, rtype=1):
     else:
         data, ids = lbh.getStations(0)
         embed = embeds.embedder3(data, 5, rtype-1)
-    datacontainer[channel_id] = data
-    idscontainer[channel_id] = ids
     message = await ctx.send(embed=embed)
+    try:datacontainer[channel_id]
+    except KeyError:
+        datacontainer[channel_id]= {}
+        idscontainer[channel_id] = {}
+    datacontainer[channel_id][message.id] = data
+    idscontainer[channel_id][message.id] = ids
     await message.add_reaction(arrows_emojis[0])
-    for i in range(len(num_emojis)-1):
+    a = len(ids)
+    if a > 5: a = 5
+    for i in range(a):
         await message.add_reaction(num_emojis[i+1])
     await message.add_reaction(arrows_emojis[1])
 
@@ -150,13 +184,46 @@ async def search(ctx, query, rtype=1):
     channel_id = ctx.message.channel.id
     data, ids = lbh.searchRG(query)
     embed = embeds.embedder(data, 5, rtype-1, 1, query)
-    datacontainer[channel_id] = data
-    idscontainer[channel_id] = ids
     message = await ctx.send(embed=embed)
+    try:datacontainer[channel_id]
+    except KeyError:
+        datacontainer[channel_id]= {}
+        idscontainer[channel_id] = {}
+    datacontainer[channel_id][message.id] = data
+    idscontainer[channel_id][message.id] = ids
     await message.add_reaction(arrows_emojis[0])
-    for i in range(len(num_emojis)-1):
+    a = len(ids)
+    if a > 5: a = 5
+    for i in range(a):
         await message.add_reaction(num_emojis[i+1])
     await message.add_reaction(arrows_emojis[1])
 
-auth_token = os.environ.get('BOT_TOKEN')
+@bot.command(aliases=['fav', 'best', 'favorite', 'liked'])
+async def favourite(ctx):
+    channel_id = ctx.message.channel.id
+    with open("favourite.json", "r") as f:
+        rawdata = json.load(f)
+        try:ids, data = rawdata[str(ctx.message.author.id)]
+        except KeyError: 
+            await ctx.send("No favourite stations available.\nReact on 💖 to add the station to favourite.")
+            return
+    if len(data[0]) == 4:rtype = 2
+    else:rtype = 1
+    if rtype == 1:embed = embeds.embedder(data, 5, rtype-1, 0, "None")
+    else:embed = embeds.embedder3(data, 5, rtype-1)
+    message = await ctx.send(embed=embed)
+    try:datacontainer[channel_id]
+    except KeyError:
+        datacontainer[channel_id]= {}
+        idscontainer[channel_id] = {}
+    datacontainer[channel_id][message.id] = data
+    idscontainer[channel_id][message.id] = ids
+    await message.add_reaction(arrows_emojis[0])
+    a = len(ids)
+    if a > 5: a = 5
+    for i in range(a):
+        await message.add_reaction(num_emojis[i+1])
+    await message.add_reaction(arrows_emojis[1])
+
+auth_token = os.environ.get('EXPERIMENTAL_BOT_TOKEN')
 bot.run(auth_token)
