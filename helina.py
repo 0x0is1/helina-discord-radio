@@ -1,4 +1,4 @@
-import discord, os, json
+import discord, os, json, asyncio
 from discord import FFmpegPCMAudio
 from discord.errors import ClientException
 from discord.ext import commands
