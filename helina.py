@@ -109,11 +109,13 @@ async def on_reaction_add(reaction, user):
             if sid not in containers[str(user.id)][0]:
                 containers[str(user.id)][0].append(sid)
                 containers[str(user.id)][1].append(data)
-                await channel.send("Added to your liked playlist. Use **fav** to play liked playlist.")
+                tem_msg=await channel.send("Added to your liked playlist. Use **fav** to play liked playlist.")
             else:
-                await channel.send("Removed from your liked playlist. click on heart again to re-add.")
+                tem_msg=await channel.send("Removed from your liked playlist. click on heart again to re-add.")
                 containers[str(user.id)][0].remove(sid)
                 containers[str(user.id)][1].remove(data)
+            await asyncio.sleep(3)
+            await tem_msg.delete()
             with open("favourite.json", "w") as f:
                 json.dump(containers, f)
             return
